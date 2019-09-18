@@ -35,11 +35,14 @@ from .utils import (get_broker_url, get_kafka_connect_url,
                     update_connector, get_existing_topics,
                     get_connector_status)
 
-CONNECTOR = 'influxdb-sink'
 
-
-@click.command(CONNECTOR)
+@click.command('influxdb-sink')
 @click.argument('topics', nargs=-1, required=False)
+@click.option(
+    '--name', '-n', 'connector', default='influxdb-sink', required=False,
+    show_default=True,
+    help='Name of the connector.'
+)
 @click.option(
     '--influxdb_url', 'influxdb_url', envvar='INFLUXDB', required=False,
     nargs=1, default='https://localhost:8086',
@@ -87,7 +90,7 @@ CONNECTOR = 'influxdb-sink'
     help=('Blacklist problematic topics.')
 )
 @click.pass_context
-def create_influxdb_sink(ctx, topics, influxdb_url, database, tasks,
+def create_influxdb_sink(ctx, connector, topics, influxdb_url, database, tasks,
                          username, password, filter_regex, dry_run,
                          auto_update, check_interval, blacklist):
     """The `Landoop InfluxDB Sink connector
@@ -113,15 +116,15 @@ def create_influxdb_sink(ctx, topics, influxdb_url, database, tasks,
     config = make_influxdb_sink_config(topics, influxdb_url, database,
                                        tasks, username, password)
 
+    click.echo(f'Creating the {connector} connector...')
     if dry_run:
         click.echo(json.dumps(config, indent=4, sort_keys=True))
         return 0
 
     kafka_connect_url = get_kafka_connect_url(ctx.parent.parent)
 
-    click.echo("Creating the connector...")
-    update_connector(kafka_connect_url, CONNECTOR, config)
-    status = get_connector_status(kafka_connect_url, CONNECTOR)
+    update_connector(kafka_connect_url, connector, config)
+    status = get_connector_status(kafka_connect_url, connector)
     click.echo(status)
     if auto_update:
         while True:
@@ -148,10 +151,8 @@ def create_influxdb_sink(ctx, topics, influxdb_url, database, tasks,
                                                        tasks,
                                                        username,
                                                        password)
-                    update_connector(kafka_connect_url, CONNECTOR,
-                                     config)
-                    status = get_connector_status(kafka_connect_url,
-                                                  CONNECTOR)
+                    update_connector(kafka_connect_url, connector, config)
+                    status = get_connector_status(kafka_connect_url, connector)
                     click.echo(status)
                     topics = current_topics
             except KeyboardInterrupt:
